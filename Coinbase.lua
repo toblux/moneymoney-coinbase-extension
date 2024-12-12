@@ -36,12 +36,10 @@ local coinbase_api_key_name    -- username
 local coinbase_api_private_key -- password
 local coinbase_api_hostname = "api.coinbase.com"
 
-local default_currency = "EUR"
-local currency_aliases = { ETH2 = "ETH" }
-local currency_redirects = { AMP = "USDC", CBETH = "ETH" }
-local cached_prices = {}
-
 local connection = nil
+local currency_id_aliases = {
+    ETH2 = "ETH" -- include staked ETH
+}
 
 WebBanking {
     version     = 1.00,
@@ -174,26 +172,22 @@ local function fetch(path, authenticate, cursor)
     return JSON(content):dictionary()
 end
 
-local function fetch_coinbase_price(conversion_key)
-    local prices = fetch("/api/v3/brokerage/market/products/" .. conversion_key)
-
-    if prices["error"] then
-        error(conversion_key .. ": " .. prices["message"])
-    end
-
-    return tonumber(prices["price"])
+local function convert_price(prices, from_currency_id, to_currency_id)
+    return prices[from_currency_id .. "-" .. to_currency_id]
 end
 
-local function convert_to_default_currency(currency)
-    local from_currency = currency_aliases[currency] or currency
-    local to_currency = currency_redirects[currency] or default_currency
-    local currency_conversion_key = from_currency .. "-" .. to_currency
+local function convert_to_default_currency(prices, from_currency_id, default_currency_id)
+    from_currency_id = currency_id_aliases[from_currency_id] or from_currency_id
+    if from_currency_id == default_currency_id then
+        return 1
+    end
 
-    local price = cached_prices[currency_conversion_key] or fetch_coinbase_price(currency_conversion_key)
-    cached_prices[currency_conversion_key] = price
-
-    if to_currency ~= default_currency then
-        price = price * convert_to_default_currency(to_currency)
+    local price = convert_price(prices, from_currency_id, default_currency_id)
+    if not price then
+        price = convert_price(prices, from_currency_id, "USDC")
+        if price then
+            price = price * convert_price(prices, "USDC", default_currency_id)
+        end
     end
 
     return price
@@ -216,6 +210,24 @@ local function fetch_coinbase_accounts(cursor)
     return accounts
 end
 
+local function fetch_coinbase_prices()
+    local response = fetch("/api/v3/brokerage/market/products/")
+    local products = response["products"]
+    local prices = {}
+    for _, product in ipairs(products) do
+        prices[product["product_id"]] = product["price"]
+    end
+    return prices
+end
+
+local function get_default_currency_id(accounts)
+    for _, account in ipairs(accounts) do
+        if account["type"] == "ACCOUNT_TYPE_FIAT" then
+            return account["currency"]
+        end
+    end
+end
+
 -- MoneyMoney app callbacks
 
 function SupportsBank(protocol, bankCode)
@@ -230,18 +242,23 @@ function InitializeSession(_protocol, _bankCode, username, _reserved, password)
 end
 
 function ListAccounts(_knownAccounts)
+    local accounts = fetch_coinbase_accounts()
+    local default_currency_id = get_default_currency_id(accounts)
+
     local coinbase_account = {
         name = "Coinbase",
         accountNumber = "Main",
-        currency = default_currency,
+        currency = default_currency_id,
         portfolio = true,
         type = "AccountTypePortfolio"
     }
     return { coinbase_account }
 end
 
-function RefreshAccount(_account, _since)
+function RefreshAccount(account, _since)
+    local default_currency_id = account["currency"]
     local accounts = fetch_coinbase_accounts()
+    local prices = fetch_coinbase_prices()
     local securities = {}
 
     for _, account in ipairs(accounts) do
@@ -249,32 +266,38 @@ function RefreshAccount(_account, _since)
         local is_active = account["active"]
 
         if available_balance > 0 and is_active then
-            local account_type = account["type"]
+            local currency_id = account["currency"]
+            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
+            if not price then
+                print("Price unavailable for currency: " .. currency_id)
+                goto continue
+            end
 
+            local amount = available_balance * price
+            if amount < 0.01 then
+                print("Insufficient balance for currency: " .. currency_id)
+                goto continue
+            end
+
+            local account_type = account["type"]
             if account_type == "ACCOUNT_TYPE_FIAT" then
-                local amount = available_balance
-                if amount >= 0.01 then
-                    table.insert(securities, {
-                        name = account["name"],
-                        amount = available_balance,
-                        currency = account["currency"],
-                    })
-                end
+                table.insert(securities, {
+                    name = account["name"],
+                    amount = amount
+                })
             elseif account_type == "ACCOUNT_TYPE_CRYPTO" then
-                local price = convert_to_default_currency(account["currency"])
-                local amount = available_balance * price
-                if amount >= 0.01 then
-                    table.insert(securities, {
-                        name = account["name"],
-                        quantity = available_balance,
-                        amount = amount,
-                        price = price
-                    })
-                end
+                table.insert(securities, {
+                    name = account["name"],
+                    quantity = available_balance,
+                    amount = amount,
+                    price = price
+                })
             else
-                print(account_type .. " not supported")
+                print("Unsupported account type: " .. account_type)
             end
         end
+
+        ::continue::
     end
 
     return { securities = securities }

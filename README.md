@@ -9,12 +9,9 @@ I had been happy with [Martin Wilhelmi's extension](https://github.com/mnin/coin
 This MoneyMoney extension is inspired by both and adds the following features:
 
 - Unlimited number of wallets (by handling paginated API responses)
-- Currency conversions which aren't directly available via the Coinbase API:
-    - `AMP-EUR`
-    - `CBETH-EUR`
-    - `ETH2-EUR`
+- Currency conversions which aren't directly available via the Coinbase API
 
-If some currency conversion is missing, please open a GitHub issue. You can test if Coinbase supports your use case by using [this public API link](https://api.coinbase.com/api/v3/brokerage/market/products/BTC-EUR) and replacing the currencies at the end of the URL (here `BTC-EUR`) accordingly. For example, `BTC-EUR` works, but `ETH2-EUR` doesn't and requires a workaround.
+If some currency is not working for you, please open a GitHub issue.
 
 ## Installation
 
