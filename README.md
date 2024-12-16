@@ -1,6 +1,6 @@
 # MoneyMoney Coinbase Extension
 
-This MoneyMoney extension shows your Coinbase wallets and balances using the new [Coinbase Advanced Trade API (v3)](https://www.coinbase.com/en-de/developer-platform/products/advanced-trade-api). The default currency is hard-coded to euro and wallets with a balance lower than €0,01 are currently being ignored.
+This MoneyMoney extension shows your Coinbase wallets and balances using the new [Coinbase Advanced Trade API (v3)](https://www.coinbase.com/en-de/developer-platform/products/advanced-trade-api).
 
 ## Features
 
