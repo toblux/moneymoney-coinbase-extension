@@ -35,6 +35,7 @@
 local coinbase_api_key_name    -- username
 local coinbase_api_private_key -- password
 local coinbase_api_hostname = "api.coinbase.com"
+local coinbase_api_base_url = "https://" .. coinbase_api_hostname
 
 local connection = nil
 local currency_id_aliases = {
@@ -43,7 +44,7 @@ local currency_id_aliases = {
 
 WebBanking {
     version     = 1.00,
-    url         = "https://" .. coinbase_api_hostname,
+    url         = coinbase_api_base_url,
     services    = { "Coinbase" },
     description = "View your Coinbase wallets and balances in MoneyMoney"
 }
@@ -109,7 +110,7 @@ end
 -- This function is copied from https://github.com/luckfamousa/coinbase-moneymoney with some minor changes
 -- Copyright (c) 2024 Felix Nensa
 -- Licensed under the MIT License
-local function create_signature(data_to_sign)
+local function create_ecdsa_signature(data_to_sign)
     -- Convert the user's private key
     local base64_key = coinbase_api_private_key
         :gsub("\\n", "")
@@ -121,8 +122,14 @@ local function create_signature(data_to_sign)
     local x = string.sub(p, string.len(p) - 63, string.len(p) - 32)
     local y = string.sub(p, string.len(p) - 31)
 
-    -- create signature
-    local signature = MM.ecSign({ curve = "prime256v1", d = d, x = x, y = y }, data_to_sign, "ecdsa sha256")
+    -- Create ECDSA signature
+    local signature = MM.ecSign({
+        curve = "prime256v1",
+        d = d,
+        x = x,
+        y = y
+    }, data_to_sign, "ecdsa sha256")
+
     local rs_signature = der_to_rs(signature)
     return base64urlencode(rs_signature)
 end
@@ -151,18 +158,21 @@ local function create_jwt(request_path)
     local payload_enc = base64urlencode(payload_json)
 
     local data_to_sign = header_enc .. "." .. payload_enc
-    local signature = create_signature(data_to_sign)
+    local signature = create_ecdsa_signature(data_to_sign)
     return data_to_sign .. "." .. signature
 end
 
 local function fetch(path, authenticate, cursor)
-    local headers = {}
-    headers["Accept"] = "application/json"
-    headers["Content-Type"] = "application/json"
+    local headers = {
+        ["Accept"] = "application/json",
+        ["Content-Type"] = "application/json"
+    }
+
     if authenticate then
         headers["Authorization"] = "Bearer " .. create_jwt(path)
     end
 
+    -- Create URL with query params if needed
     local url = url .. path
     if cursor then
         url = url .. "?cursor=" .. cursor
@@ -201,7 +211,7 @@ local function fetch_coinbase_accounts(cursor)
         local cursor = response["cursor"]
         local next_accounts = fetch_coinbase_accounts(cursor)
 
-        -- Append consecutive accounts
+        -- Append accounts
         for _, next_account in ipairs(next_accounts) do
             table.insert(accounts, next_account)
         end
@@ -226,9 +236,12 @@ local function get_default_currency_id(accounts)
             return account["currency"]
         end
     end
+
+    -- Fallback to EUR if no fiat account is found
+    return "EUR"
 end
 
--- MoneyMoney app callbacks
+-- MoneyMoney App Callbacks
 
 function SupportsBank(protocol, bankCode)
     return protocol == ProtocolWebBanking and bankCode == "Coinbase"
@@ -275,7 +288,7 @@ function RefreshAccount(account, _since)
 
             local amount = available_balance * price
             if amount < 0.01 then
-                print("Insufficient balance for currency: " .. currency_id)
+                print("Insufficient amount for currency " .. currency_id)
                 goto continue
             end
 
