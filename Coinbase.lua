@@ -36,6 +36,7 @@ local coinbase_api_key_name    -- username
 local coinbase_api_private_key -- password
 local coinbase_api_hostname = "api.coinbase.com"
 local coinbase_api_base_url = "https://" .. coinbase_api_hostname
+local coinbase_service_name = "Coinbase Account"
 
 local connection = nil
 local currency_id_aliases = {
@@ -45,7 +46,7 @@ local currency_id_aliases = {
 WebBanking {
     version     = 1.00,
     url         = coinbase_api_base_url,
-    services    = { "Coinbase" },
+    services    = { coinbase_service_name },
     description = "View your Coinbase wallets and balances in MoneyMoney"
 }
 
@@ -244,7 +245,7 @@ end
 -- MoneyMoney App Callbacks
 
 function SupportsBank(protocol, bankCode)
-    return protocol == ProtocolWebBanking and bankCode == "Coinbase"
+    return protocol == ProtocolWebBanking and bankCode == coinbase_service_name
 end
 
 function InitializeSession(_protocol, _bankCode, username, _reserved, password)

@@ -23,7 +23,7 @@ Until this extension is digitally signed by the company making MoneyMoney (MRH a
 
 To use this extension, you have to **create a Coinbase API key** with read-only permissions, which is documented [here](https://help.coinbase.com/exchange/managing-my-account/how-to-create-an-api-key).
 
-Finally, add a new Coinbase account in MoneyMoney with **"+" > Add account > Other > Coinbase** and use your **Coinbase API key name** as your **username** and your **Coinbase private key** as your **password** (copy both values in full).
+Finally, add a new Coinbase account in MoneyMoney with **"+" > Add account > Other > Coinbase Account** and enter your **API key name** and **EC private key** (copy both values in full).
 
 ## Contributing
 
