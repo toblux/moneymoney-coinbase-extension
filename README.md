@@ -17,10 +17,6 @@ If some currency is not working for you, please open a GitHub issue.
 
 Installing MoneyMoney extensions is documented [here](https://moneymoney-app.com/extensions/) (scroll down to **Installation**).
 
-Until this extension is digitally signed by the company making MoneyMoney (MRH applications GmbH), you'll have to deactivate **"Verify digital signatures of extensions"** under **Settings > Extensions**.
-
-<img src="assets/moneymoney_settings_extensions.png" width="518" alt="Screenshot of MoneyMoney's Settings > Extensions window">
-
 To use this extension, you have to **create a Coinbase API key** with read-only permissions, which is documented [here](https://help.coinbase.com/exchange/managing-my-account/how-to-create-an-api-key).
 
 Finally, add a new Coinbase account in MoneyMoney with **"+" > Add account > Other > Coinbase Account** and enter your **API key name** and **EC private key** (copy both values in full).
