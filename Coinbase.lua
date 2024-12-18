@@ -264,7 +264,7 @@ function ListAccounts(_knownAccounts)
         accountNumber = "Main",
         currency = default_currency_id,
         portfolio = true,
-        type = "AccountTypePortfolio"
+        type = AccountTypePortfolio
     }
     return { coinbase_account }
 end
