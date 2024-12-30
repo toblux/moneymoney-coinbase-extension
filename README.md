@@ -1,6 +1,8 @@
 # MoneyMoney Coinbase Extension
 
-This MoneyMoney extension shows your Coinbase wallets and balances using the new [Coinbase Advanced Trade API (v3)](https://www.coinbase.com/en-de/developer-platform/products/advanced-trade-api).
+This MoneyMoney extension shows your Coinbase wallets and balances using the new [Coinbase Advanced Trade API v3](https://www.coinbase.com/en-de/developer-platform/products/advanced-trade-api).
+
+**Please note:** If you are upgrading from another extension that uses the deprecated Coinbase API v2, you must create a new Coinbase API key for this extension to work.
 
 ## Features
 
@@ -19,7 +21,7 @@ Installing MoneyMoney extensions is documented [here](https://moneymoney-app.com
 
 To use this extension, you have to **create a Coinbase API key** with read-only permissions, which is documented [here](https://help.coinbase.com/exchange/managing-my-account/how-to-create-an-api-key).
 
-Finally, add a new Coinbase account in MoneyMoney with **"+" > Add account > Other > Coinbase Account** and enter your **API key name** and **EC private key** (copy both values in full).
+Finally, add a new Coinbase account in MoneyMoney with **Account > Add Account > Other > Coinbase Account** and enter your **API key name** and your **EC private key** (copy both values in full, including any newline characters such as `\n`).
 
 ## Contributing
 
