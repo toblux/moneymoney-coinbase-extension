@@ -116,6 +116,9 @@ local function create_ecdsa_signature(data_to_sign)
     local base64_key = coinbase_api_private_key
         :gsub("\\n", "")
         :match("-----BEGIN EC PRIVATE KEY-----([A-Za-z0-9+/=]+)-----END EC PRIVATE KEY-----")
+    if not base64_key then
+        error("Invalid private key - please use a valid Coinbase API v3 key")
+    end
     local key = MM.base64decode(base64_key)
     local der = MM.derdecode(MM.derdecode(key)[1][2])
     local d = der[2][2]
