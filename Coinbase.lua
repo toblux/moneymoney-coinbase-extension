@@ -44,7 +44,7 @@ local currency_id_aliases = {
 }
 
 WebBanking {
-    version     = 1.00,
+    version     = 1.01,
     url         = coinbase_api_base_url,
     services    = { coinbase_service_name },
     description = "View your Coinbase wallets and balances in MoneyMoney"
