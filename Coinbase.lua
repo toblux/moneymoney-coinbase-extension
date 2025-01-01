@@ -116,7 +116,8 @@ local function create_ecdsa_signature(data_to_sign)
     local base64_key = coinbase_api_private_key
         :gsub("\\n", "") -- remove any newline characters
         :gsub("\n", "")  -- remove any actual newlines (just in case)
-        :match("-----BEGIN EC PRIVATE KEY-----([A-Za-z0-9+/=]+)-----END EC PRIVATE KEY-----")
+        :match("-----BEGIN EC PRIVATE KEY-----([%sA-Za-z0-9+/=]+)-----END EC PRIVATE KEY-----")
+        :gsub("%s+", "") -- remove whitespace
     if not base64_key then
         error("Invalid private key - please use a valid Coinbase API v3 key")
     end
