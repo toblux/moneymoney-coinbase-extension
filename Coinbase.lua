@@ -54,6 +54,14 @@ local function base64urlencode(data)
     return MM.base64(data):gsub("+", "-"):gsub("/", "_"):gsub("=", "")
 end
 
+local function parse_ec_private_key(key)
+    return key
+        :gsub("\\n", "") -- remove newline characters
+        :gsub("\n", "")  -- remove actual newlines (just in case)
+        :match("-----BEGIN EC PRIVATE KEY-----([%sA-Za-z0-9+/=]+)-----END EC PRIVATE KEY-----")
+        :gsub("%s+", "") -- remove whitespace
+end
+
 -- This function is copied from https://github.com/luckfamousa/coinbase-moneymoney with some minor changes
 -- Copyright (c) 2024 Felix Nensa
 -- Licensed under the MIT License
@@ -113,14 +121,11 @@ end
 -- Licensed under the MIT License
 local function create_ecdsa_signature(data_to_sign)
     -- Convert the user's private key
-    local base64_key = coinbase_api_private_key
-        :gsub("\\n", "") -- remove any newline characters
-        :gsub("\n", "")  -- remove any actual newlines (just in case)
-        :match("-----BEGIN EC PRIVATE KEY-----([%sA-Za-z0-9+/=]+)-----END EC PRIVATE KEY-----")
-        :gsub("%s+", "") -- remove whitespace
+    local base64_key = parse_ec_private_key(coinbase_api_private_key)
     if not base64_key then
         error("Invalid private key - please use a valid Coinbase API v3 key")
     end
+
     local key = MM.base64decode(base64_key)
     local der = MM.derdecode(MM.derdecode(key)[1][2])
     local d = der[2][2]
