@@ -50,7 +50,7 @@ local AccountType = {
 }
 
 WebBanking {
-    version     = 1.01,
+    version     = 1.02,
     url         = coinbase_api_base_url,
     services    = { coinbase_service_name },
     description = "View your Coinbase wallets and balances in MoneyMoney"
