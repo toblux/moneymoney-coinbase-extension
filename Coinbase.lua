@@ -43,6 +43,12 @@ local currency_id_aliases = {
     ETH2 = "ETH" -- include staked ETH
 }
 
+local AccountType = {
+    FIAT = "ACCOUNT_TYPE_FIAT",
+    CRYPTO = "ACCOUNT_TYPE_CRYPTO",
+    VAULT = "ACCOUNT_TYPE_VAULT"
+}
+
 WebBanking {
     version     = 1.01,
     url         = coinbase_api_base_url,
@@ -243,13 +249,22 @@ end
 
 local function get_default_currency_id(accounts)
     for _, account in ipairs(accounts) do
-        if account["type"] == "ACCOUNT_TYPE_FIAT" then
+        if account["type"] == AccountType.FIAT then
             return account["currency"]
         end
     end
 
     -- Fallback to EUR if no fiat account is found
     return "EUR"
+end
+
+local function create_security(account_type, name, quantity, price)
+    local security = { name = name, amount = quantity * price }
+    if account_type == AccountType.CRYPTO or account_type == AccountType.VAULT then
+        security["quantity"] = quantity
+        security["price"] = price
+    end
+    return security
 end
 
 -- MoneyMoney App Callbacks
@@ -286,38 +301,56 @@ function RefreshAccount(account, _since)
     local securities = {}
 
     for _, account in ipairs(accounts) do
-        local available_balance = tonumber(account["available_balance"]["value"])
+        local account_name = account["name"]
         local is_active = account["active"]
+        if not is_active then
+            print("Inactive account: " .. account_name)
+            goto continue
+        end
 
-        if available_balance > 0 and is_active then
-            local currency_id = account["currency"]
+        local account_type = account["type"]
+        if account_type ~= AccountType.FIAT and account_type ~= AccountType.CRYPTO and account_type ~= AccountType.VAULT then
+            print("Unsupported account type: " .. account_type)
+            goto continue
+        end
+
+        -- Available balance
+        local available_balance = tonumber(account["available_balance"]["value"])
+        if available_balance > 0 then
+            local currency_id = account["available_balance"]["currency"]
             local price = convert_to_default_currency(prices, currency_id, default_currency_id)
-            if not price then
-                print("Price unavailable for currency: " .. currency_id)
-                goto continue
-            end
-
-            local amount = available_balance * price
-            if amount < 0.01 then
-                print("Insufficient amount for currency " .. currency_id)
-                goto continue
-            end
-
-            local account_type = account["type"]
-            if account_type == "ACCOUNT_TYPE_FIAT" then
-                table.insert(securities, {
-                    name = account["name"],
-                    amount = amount
-                })
-            elseif account_type == "ACCOUNT_TYPE_CRYPTO" then
-                table.insert(securities, {
-                    name = account["name"],
-                    quantity = available_balance,
-                    amount = amount,
-                    price = price
-                })
+            if price then
+                local available_amount = available_balance * price
+                if available_amount >= 0.01 then
+                    table.insert(securities, create_security(
+                        account_type,
+                        account_name,
+                        available_balance,
+                        price
+                    ))
+                end
             else
-                print("Unsupported account type: " .. account_type)
+                print("Price unavailable for currency: " .. currency_id)
+            end
+        end
+
+        -- Balance on hold
+        local on_hold_balance = tonumber(account["hold"]["value"])
+        if on_hold_balance > 0 then
+            local currency_id = account["hold"]["currency"]
+            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
+            if price then
+                local on_hold_amount = on_hold_balance * price
+                if on_hold_amount >= 0.01 then
+                    table.insert(securities, create_security(
+                        account_type,
+                        account_name .. " (on hold)",
+                        on_hold_balance,
+                        price
+                    ))
+                end
+            else
+                print("Price unavailable for currency: " .. currency_id)
             end
         end
 
