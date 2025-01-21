@@ -302,8 +302,8 @@ function RefreshAccount(account, _since)
 
     for _, account in ipairs(accounts) do
         local account_name = account["name"]
-        local is_active = account["active"]
-        if not is_active then
+        local account_active = account["active"]
+        if not account_active then
             print("Inactive account: " .. account_name)
             goto continue
         end
@@ -315,42 +315,38 @@ function RefreshAccount(account, _since)
         end
 
         -- Available balance
-        local available_balance = tonumber(account["available_balance"]["value"])
-        if available_balance > 0 then
+        local balance_available = tonumber(account["available_balance"]["value"])
+        if balance_available > 0 then
             local currency_id = account["available_balance"]["currency"]
             local price = convert_to_default_currency(prices, currency_id, default_currency_id)
-            if price then
-                local available_amount = available_balance * price
-                if available_amount >= 0.01 then
-                    table.insert(securities, create_security(
-                        account_type,
-                        account_name,
-                        available_balance,
-                        price
-                    ))
-                end
-            else
+
+            if not price then
                 print("Price unavailable for currency: " .. currency_id)
+            elseif balance_available * price >= 0.01 then
+                table.insert(securities, create_security(
+                    account_type,
+                    account_name,
+                    balance_available,
+                    price
+                ))
             end
         end
 
         -- Balance on hold
-        local on_hold_balance = tonumber(account["hold"]["value"])
-        if on_hold_balance > 0 then
+        local balance_on_hold = tonumber(account["hold"]["value"])
+        if balance_on_hold > 0 then
             local currency_id = account["hold"]["currency"]
             local price = convert_to_default_currency(prices, currency_id, default_currency_id)
-            if price then
-                local on_hold_amount = on_hold_balance * price
-                if on_hold_amount >= 0.01 then
-                    table.insert(securities, create_security(
-                        account_type,
-                        account_name .. " (on hold)",
-                        on_hold_balance,
-                        price
-                    ))
-                end
-            else
+
+            if not price then
                 print("Price unavailable for currency: " .. currency_id)
+            elseif balance_on_hold * price >= 0.01 then
+                table.insert(securities, create_security(
+                    account_type,
+                    account_name .. " (on hold)",
+                    balance_on_hold,
+                    price
+                ))
             end
         end
 
