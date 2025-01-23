@@ -20,7 +20,7 @@ This MoneyMoney extension is inspired by both and adds the following features:
 
 - Unlimited number of wallets (by handling paginated API responses)
 - Currency conversions which aren't directly available via the Coinbase API
-- Starting with [version 1.02](https://github.com/toblux/moneymoney-coinbase-extension/releases/tag/v1.02), balances on hold (e.g., staked currencies) are displayed separately
+- Starting with [version 1.02](https://github.com/toblux/moneymoney-coinbase-extension/releases/tag/v1.02), balances on hold (e.g., staked currencies) are listed separately
 
 ## Contributing
 
