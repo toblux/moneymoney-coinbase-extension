@@ -200,8 +200,14 @@ local function fetch(path, authenticate, cursor)
         url = url .. "?cursor=" .. cursor
     end
 
-    local content = connection:request("GET", url, nil, nil, headers)
-    return JSON(content):dictionary()
+    local content, _charset, mime_type = connection:request("GET", url, nil, nil, headers)
+    if mime_type == MimeType.JSON then
+        return JSON(content):dictionary()
+    elseif mime_type == MimeType.TEXT and content:find("Unauthorized") then
+        error("Unauthorized API access - please check your Coinbase API key configuration")
+    else
+        error("Unknown API error")
+    end
 end
 
 local function convert_price(prices, from_currency_id, to_currency_id)
