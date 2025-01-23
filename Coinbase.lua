@@ -49,6 +49,11 @@ local AccountType = {
     VAULT = "ACCOUNT_TYPE_VAULT"
 }
 
+local MimeType = {
+    JSON = "application/json",
+    TEXT = "text/plain"
+}
+
 WebBanking {
     version     = 1.02,
     url         = coinbase_api_base_url,
@@ -181,8 +186,8 @@ end
 
 local function fetch(path, authenticate, cursor)
     local headers = {
-        ["Accept"] = "application/json",
-        ["Content-Type"] = "application/json"
+        ["Accept"] = MimeType.JSON,
+        ["Content-Type"] = MimeType.JSON
     }
 
     if authenticate then
