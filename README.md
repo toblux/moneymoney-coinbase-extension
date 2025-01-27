@@ -14,7 +14,7 @@ Finally, add a new Coinbase account in MoneyMoney with **Account > Add Account >
 
 ## Rationale and features
 
-I had been happy with [Martin Wilhelmi's extension](https://github.com/mnin/coinbase-moneymoney), but it only supports the now-deprecated Coinbase API v2. While [Felix Nensa's extension](https://github.com/luckfamousa/coinbase-moneymoney) supports the new Coinbase API v3, it didn't really work for me because paging isn't implemented and prices for cryptocurrencies like cbETH (Coinbase wrapped staked ETH), ETH2, etc. are missing (at least as of December 2024).
+I had been happy with [Martin Wilhelmi's extension](https://github.com/mnin/coinbase-moneymoney), but it only supports the now-deprecated Coinbase API v2. While [Felix Nensa's extension](https://github.com/luckfamousa/coinbase-moneymoney) supports the new Coinbase API v3, it didn't really work for me because paging isn't implemented and prices for cryptocurrencies like cbETH (Coinbase wrapped staked ETH), ~~[ETH2](https://github.com/toblux/moneymoney-coinbase-extension/issues/4)~~, etc. are missing (at least as of December 2024).
 
 This MoneyMoney extension is inspired by both and adds the following features:
 
