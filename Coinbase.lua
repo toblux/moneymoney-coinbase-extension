@@ -55,7 +55,7 @@ local MimeType = {
 }
 
 WebBanking {
-    version     = 1.02,
+    version     = 1.03,
     url         = coinbase_api_base_url,
     services    = { coinbase_service_name },
     description = "View your Coinbase wallets and balances in MoneyMoney"
