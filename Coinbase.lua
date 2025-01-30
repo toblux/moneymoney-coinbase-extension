@@ -1,11 +1,8 @@
 --
 -- Yet another MoneyMoney Coinbase extension
 --
--- This MoneyMoney extension shows your Coinbase wallets and balances using the
--- new Coinbase API v3. It supports an unlimited number of wallets and currency
--- conversions which aren't directly available via the Coinbase API.
---
--- For more information about this extension, check out its GitHub repository:
+-- This MoneyMoney extension lists your Coinbase wallets and balances. For more
+-- information about this extension, check out its GitHub repository:
 -- https://github.com/toblux/moneymoney-coinbase-extension
 --
 -- MIT License
@@ -39,11 +36,13 @@ local coinbase_api_base_url = "https://" .. coinbase_api_hostname
 local coinbase_service_name = "Coinbase Account"
 
 local connection = nil
-local currency_id_aliases = {
-    ETH2 = "ETH" -- include staked ETH
+
+local AccountTypeApiV2 = {
+    FIAT = "fiat",
+    WALLET = "wallet"
 }
 
-local AccountType = {
+local AccountTypeApiV3 = {
     FIAT = "ACCOUNT_TYPE_FIAT",
     CRYPTO = "ACCOUNT_TYPE_CRYPTO",
     VAULT = "ACCOUNT_TYPE_VAULT"
@@ -134,7 +133,7 @@ local function create_ecdsa_signature(data_to_sign)
     -- Convert the user's private key
     local base64_key = parse_ec_private_key(coinbase_api_private_key)
     if not base64_key then
-        error("Invalid private key - please use a valid Coinbase API v3 key")
+        error("Invalid private key - please use a valid Coinbase API key")
     end
 
     local key = MM.base64decode(base64_key)
@@ -184,7 +183,8 @@ local function create_jwt(request_path)
     return data_to_sign .. "." .. signature
 end
 
-local function fetch(path, authenticate, cursor)
+local function fetch(path, authenticate, query_params)
+    local query_params = query_params or {}
     local headers = {
         ["Accept"] = MimeType.JSON,
         ["Content-Type"] = MimeType.JSON
@@ -194,10 +194,16 @@ local function fetch(path, authenticate, cursor)
         headers["Authorization"] = "Bearer " .. create_jwt(path)
     end
 
-    -- Create URL with query params if needed
+    -- Add query params if needed
     local url = url .. path
-    if cursor then
-        url = url .. "?cursor=" .. cursor
+    local is_first_query_param = true
+    for key, value in pairs(query_params) do
+        if is_first_query_param then
+            url = url .. "?" .. key .. "=" .. value
+            is_first_query_param = false
+        else
+            url = url .. "&" .. key .. "=" .. value
+        end
     end
 
     local content, _charset, mime_type = connection:request("GET", url, nil, nil, headers)
@@ -215,7 +221,6 @@ local function convert_price(prices, from_currency_id, to_currency_id)
 end
 
 local function convert_to_default_currency(prices, from_currency_id, default_currency_id)
-    from_currency_id = currency_id_aliases[from_currency_id] or from_currency_id
     if from_currency_id == default_currency_id then
         return 1
     end
@@ -231,13 +236,14 @@ local function convert_to_default_currency(prices, from_currency_id, default_cur
     return price
 end
 
-local function fetch_coinbase_accounts(cursor)
-    local response = fetch("/api/v3/brokerage/accounts", true, cursor)
-    local accounts = response["accounts"]
+local function fetch_api_v2_accounts(query_params)
+    local response = fetch("/api/v2/accounts", true, query_params)
+    local accounts = response.data
+    local pagination = response.pagination
 
-    if response["has_next"] then
-        local cursor = response["cursor"]
-        local next_accounts = fetch_coinbase_accounts(cursor)
+    if pagination and pagination.next_starting_after then
+        query_params.starting_after = pagination.next_starting_after
+        local next_accounts = fetch_api_v2_accounts(query_params)
 
         -- Append accounts
         for _, next_account in ipairs(next_accounts) do
@@ -248,34 +254,132 @@ local function fetch_coinbase_accounts(cursor)
     return accounts
 end
 
-local function fetch_coinbase_prices()
+local function fetch_api_v3_accounts(query_params)
+    local response = fetch("/api/v3/brokerage/accounts", true, query_params)
+    local accounts = response.accounts
+
+    if response.has_next then
+        query_params.cursor = response.cursor
+        local next_accounts = fetch_api_v3_accounts(query_params)
+
+        -- Append accounts
+        for _, next_account in ipairs(next_accounts) do
+            table.insert(accounts, next_account)
+        end
+    end
+
+    return accounts
+end
+
+local function create_security(account_type, name, quantity, price)
+    local security = { name = name, amount = quantity * price }
+    if account_type == AccountTypeApiV2.WALLET or account_type == AccountTypeApiV3.CRYPTO or account_type == AccountTypeApiV3.VAULT then
+        security.quantity = quantity
+        security.price = price
+    end
+    return security
+end
+
+local function create_securities_from_api_v2_accounts(prices, default_currency_id)
+    local securities = {}
+
+    local api_v2_accounts = fetch_api_v2_accounts({ limit = 100 })
+    for _, api_v2_account in ipairs(api_v2_accounts) do
+        local account_name = api_v2_account.name
+
+        -- Skip unsupported accounts
+        local account_type = api_v2_account.type
+        if account_type ~= AccountTypeApiV2.FIAT and account_type ~= AccountTypeApiV2.WALLET then
+            print("Unsupported account type: " .. account_type)
+            goto continue
+        end
+
+        local quantity = tonumber(api_v2_account.balance.amount)
+        if quantity > 0 then
+            local currency_id = api_v2_account.balance.currency
+            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
+
+            if not price then
+                print("Price unavailable for currency: " .. currency_id)
+            elseif quantity * price >= 0.01 then
+                table.insert(securities, create_security(
+                    account_type,
+                    account_name,
+                    quantity,
+                    price
+                ))
+            end
+        end
+
+        ::continue::
+    end
+
+    return securities
+end
+
+local function create_securities_from_api_v3_accounts(prices, default_currency_id)
+    local securities = {}
+
+    local api_v3_accounts = fetch_api_v3_accounts({ limit = 100 })
+    for _, api_v3_account in ipairs(api_v3_accounts) do
+        local account_name = api_v3_account.name
+
+        -- Skip inactive accounts
+        if not api_v3_account.active then
+            print("Inactive account: " .. account_name)
+            goto continue
+        end
+
+        -- Skip unsupported accounts
+        local account_type = api_v3_account.type
+        if account_type ~= AccountTypeApiV3.FIAT and account_type ~= AccountTypeApiV3.CRYPTO and account_type ~= AccountTypeApiV3.VAULT then
+            print("Unsupported account type: " .. account_type)
+            goto continue
+        end
+
+        -- Focus on balances that are on hold (all others should be included in API v2 accounts)
+        local balance_on_hold = tonumber(api_v3_account.hold.value)
+        if balance_on_hold > 0 then
+            local currency_id = api_v3_account.hold.currency
+            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
+
+            if not price then
+                print("Price unavailable for currency: " .. currency_id)
+            elseif balance_on_hold * price >= 0.01 then
+                table.insert(securities, create_security(
+                    account_type,
+                    account_name .. " (on hold)",
+                    balance_on_hold,
+                    price
+                ))
+            end
+        end
+
+        ::continue::
+    end
+
+    return securities
+end
+
+local function fetch_api_v3_prices()
     local response = fetch("/api/v3/brokerage/market/products/")
-    local products = response["products"]
+    local products = response.products
     local prices = {}
     for _, product in ipairs(products) do
-        prices[product["product_id"]] = product["price"]
+        prices[product.product_id] = product.price
     end
     return prices
 end
 
 local function get_default_currency_id(accounts)
     for _, account in ipairs(accounts) do
-        if account["type"] == AccountType.FIAT then
-            return account["currency"]
+        if account.type == AccountTypeApiV3.FIAT then
+            return account.currency
         end
     end
 
     -- Fallback to EUR if no fiat account is found
     return "EUR"
-end
-
-local function create_security(account_type, name, quantity, price)
-    local security = { name = name, amount = quantity * price }
-    if account_type == AccountType.CRYPTO or account_type == AccountType.VAULT then
-        security["quantity"] = quantity
-        security["price"] = price
-    end
-    return security
 end
 
 -- MoneyMoney App Callbacks
@@ -292,8 +396,8 @@ function InitializeSession(_protocol, _bankCode, username, _reserved, password)
 end
 
 function ListAccounts(_knownAccounts)
-    local accounts = fetch_coinbase_accounts()
-    local default_currency_id = get_default_currency_id(accounts)
+    local api_v3_accounts = fetch_api_v3_accounts()
+    local default_currency_id = get_default_currency_id(api_v3_accounts)
 
     local coinbase_account = {
         name = "Coinbase",
@@ -306,62 +410,24 @@ function ListAccounts(_knownAccounts)
 end
 
 function RefreshAccount(account, _since)
-    local default_currency_id = account["currency"]
-    local accounts = fetch_coinbase_accounts()
-    local prices = fetch_coinbase_prices()
+    local prices = fetch_api_v3_prices()
+    local default_currency_id = account.currency
+
+    local api_v2_securities = create_securities_from_api_v2_accounts(prices, default_currency_id)
+    local api_v3_securities = create_securities_from_api_v3_accounts(prices, default_currency_id)
+
+    local merged_security_names = {}
     local securities = {}
 
-    for _, account in ipairs(accounts) do
-        local account_name = account["name"]
-        local account_active = account["active"]
-        if not account_active then
-            print("Inactive account: " .. account_name)
-            goto continue
+    for _, api_v2_security in ipairs(api_v2_securities) do
+        table.insert(securities, api_v2_security)
+        merged_security_names[api_v2_security.name] = true
+    end
+
+    for _, api_v3_security in ipairs(api_v3_securities) do
+        if not merged_security_names[api_v3_security.name] then
+            table.insert(securities, api_v3_security)
         end
-
-        local account_type = account["type"]
-        if account_type ~= AccountType.FIAT and account_type ~= AccountType.CRYPTO and account_type ~= AccountType.VAULT then
-            print("Unsupported account type: " .. account_type)
-            goto continue
-        end
-
-        -- Available balance
-        local balance_available = tonumber(account["available_balance"]["value"])
-        if balance_available > 0 then
-            local currency_id = account["available_balance"]["currency"]
-            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
-
-            if not price then
-                print("Price unavailable for currency: " .. currency_id)
-            elseif balance_available * price >= 0.01 then
-                table.insert(securities, create_security(
-                    account_type,
-                    account_name,
-                    balance_available,
-                    price
-                ))
-            end
-        end
-
-        -- Balance on hold
-        local balance_on_hold = tonumber(account["hold"]["value"])
-        if balance_on_hold > 0 then
-            local currency_id = account["hold"]["currency"]
-            local price = convert_to_default_currency(prices, currency_id, default_currency_id)
-
-            if not price then
-                print("Price unavailable for currency: " .. currency_id)
-            elseif balance_on_hold * price >= 0.01 then
-                table.insert(securities, create_security(
-                    account_type,
-                    account_name .. " (on hold)",
-                    balance_on_hold,
-                    price
-                ))
-            end
-        end
-
-        ::continue::
     end
 
     return { securities = securities }
