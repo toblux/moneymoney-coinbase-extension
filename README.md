@@ -12,13 +12,13 @@ Finally, add a new Coinbase account in MoneyMoney with **Account > Add Account >
 
 ## Rationale and features
 
-I was happy with [Martin Wilhelmi's](https://github.com/mnin/coinbase-moneymoney) and [Felix Nensa's](https://github.com/luckfamousa/coinbase-moneymoney) extensions, but they're either no longer maintained or just didn't work for me anymore—mainly because paging isn't implemented and cryptocurrencies like cbETH are missing (at least as of December 2024).
+I had been happy with [Martin Wilhelmi's](https://github.com/mnin/coinbase-moneymoney) and [Felix Nensa's](https://github.com/luckfamousa/coinbase-moneymoney) extensions, but they're either no longer maintained or just didn't work for me anymore—mainly because paging isn't implemented and cryptocurrencies like cbETH are missing (at least as of December 2024).
 
 This MoneyMoney extension is inspired by both and adds the following features:
 
 - Unlimited number of wallets (by handling paginated API responses)
-- Starting with v1.02, balances on hold are listed separately
-- Starting with v1.04, staked assets are working again
+- Lists all your crypto and cash assets (including stablecoins)
+- Balances on hold and staked assets are listed separately
 
 ## Contributing
 
