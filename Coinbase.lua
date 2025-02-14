@@ -237,6 +237,7 @@ local function convert_to_default_currency(prices, from_currency_id, default_cur
 end
 
 local function fetch_api_v2_accounts(query_params)
+    local query_params = query_params or {}
     local response = fetch("/v2/accounts", true, query_params)
     local accounts = response.data
     local pagination = response.pagination
@@ -255,6 +256,7 @@ local function fetch_api_v2_accounts(query_params)
 end
 
 local function fetch_api_v3_accounts(query_params)
+    local query_params = query_params or {}
     local response = fetch("/api/v3/brokerage/accounts", true, query_params)
     local accounts = response.accounts
 
