@@ -33,3 +33,11 @@ Contributions are welcome!
 ## Sponsoring
 
 If you don't have a Coinbase account yet (unlikely if you're looking for this extension, but who knows), feel free to use my [Invite friends link](https://coinbase.com/join/KF96TTX?src=referral-link) to create one.
+
+If you enjoy this extension, please consider a donation to the following addresses:
+
+- Bitcoin (BTC): `bc1qfctuxg44nftfd5k5mnl7j79n2e04skc66dwp4g`
+- Ethereum (ETH): `0xAAdde3aa345a87C21AD4bB674C9C3f02783F5a7D`
+- Solana (SOL): `FvYW7nboe9jmEpw9aqw8KCpvJiohverjn1ACTacAZnAd`
+
+[Say hi](mailto:thorsten.blum+mm@toblux.com) if you want to be added to the (currently empty) list of sponsors. Thank you!
